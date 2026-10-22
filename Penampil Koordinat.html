@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Penampil Koordinat</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #f3f5f7;
+    color: #1d2733;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 14px; }
+  button {
+    width: 100%;
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    background: #1a73e8;
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  button:disabled { background: #8ab4f8; }
+  #hasil {
+    display: none;
+    margin-top: 14px;
+    padding: 14px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    user-select: all;
+  }
+  .baris { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+  .baris:last-child { border-bottom: 0; }
+  .baris span:first-child { color: #667; }
+  .baris span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
+  #pesan { margin-top: 12px; font-size: 14px; color: #c5221f; }
+  #peta {
+    display: none;
+    margin-top: 14px;
+    height: 320px;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📍 Penampil Koordinat</h1>
+  <p id="keterangan" style="margin:0 0 14px;color:#445;line-height:1.5;">Klik untuk melihat titik koordinat lokasi yang anda pijak saat ini</p>
+
+  <button id="tombol">Munculkan Titik Koordinat</button>
+
+  <div id="pesan"></div>
+
+  <div id="hasil"></div>
+
+  <div id="peta"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  var tombol = document.getElementById('tombol');
+  var pesan = document.getElementById('pesan');
+  var hasil = document.getElementById('hasil');
+  var elPeta = document.getElementById('peta');
+  var peta = null, marker = null, lingkaran = null;
+
+  tombol.addEventListener('click', function () {
+    pesan.textContent = '';
+
+    if (!navigator.geolocation) {
+      pesan.textContent = 'Browser ini tidak mendukung GPS.';
+      return;
+    }
+    if (window.isSecureContext === false) {
+      pesan.textContent = 'Akses GPS diblokir karena halaman ini tidak dibuka lewat HTTPS. Buka lewat link https:// (misalnya GitHub Pages).';
+      return;
+    }
+
+    tombol.disabled = true;
+    tombol.textContent = 'Mencari lokasi...';
+
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var akurasi = pos.coords.accuracy;
+
+      hasil.textContent = lat.toFixed(6) + ',' + lng.toFixed(6);
+      hasil.style.display = 'block';
+      document.getElementById('keterangan').style.display = 'none';
+      elPeta.style.display = 'block';
+
+      if (typeof L !== 'undefined') {
+        if (!peta) {
+          peta = L.map('peta').setView([lat, lng], 17);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+          }).addTo(peta);
+        } else {
+          peta.setView([lat, lng], 17);
+        }
+        if (marker) { peta.removeLayer(marker); peta.removeLayer(lingkaran); }
+        marker = L.marker([lat, lng]).addTo(peta);
+        lingkaran = L.circle([lat, lng], { radius: akurasi, weight: 1 }).addTo(peta);
+        setTimeout(function () { peta.invalidateSize(); }, 100);
+      } else {
+        pesan.textContent = 'Peta gagal dimuat (cek koneksi internet), tapi koordinat tetap tampil.';
+      }
+
+      tombol.disabled = false;
+      tombol.textContent = 'Munculkan Titik Koordinat';
+    }, function (err) {
+      var teks = {
+        1: 'Izin lokasi ditolak. Aktifkan izin lokasi untuk browser ini.',
+        2: 'Lokasi tidak tersedia. Pastikan GPS menyala.',
+        3: 'Waktu habis saat mencari lokasi. Coba lagi.'
+      };
+      pesan.textContent = teks[err.code] || 'Gagal mengambil lokasi.';
+      tombol.disabled = false;
+      tombol.textContent = 'Munculkan Titik Koordinat';
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  });
+</script>
+</body>
+</html>
